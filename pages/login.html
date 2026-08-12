@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AIxStudio Admin · 로그인</title>
+    <link rel="stylesheet" href="../css/admin.css">
+    <script type="module" src="../js/login.js"></script>
+  </head>
+  <body class="login_page">
+    <div class="login_frame">
+      <div class="login_header">
+        <h1 class="logo">AIxStudio Admin</h1>
+        <span class="sub_title">관리자 계정으로 로그인해주세요.</span>
+      </div>
+
+      <form id="loginForm" class="login_input_wrap">
+        <div class="login_form_item">
+          <label for="loginEmail" class="blind">이메일</label>
+          <input type="email" id="loginEmail" autocomplete="username" placeholder="이메일을 입력해주세요.">
+        </div>
+
+        <div class="login_form_item">
+          <label for="loginPassword" class="blind">비밀번호</label>
+          <input type="password" id="loginPassword" autocomplete="current-password" placeholder="비밀번호를 입력해주세요.">
+        </div>
+
+        <p class="login_error" id="loginError"></p>
+
+        <button type="submit" id="loginSubmitBtn" class="login_btn">로그인</button>
+      </form>
+
+      <p class="copyright">&copy; Pushcomz Corp.</p>
+    </div>
+  </body>
+</html>

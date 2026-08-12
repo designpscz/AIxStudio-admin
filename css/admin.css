@@ -1,0 +1,413 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  color: #0e0e12;
+  background: #f7f7f8;
+}
+
+/* ── 로그인 페이지 (AIxStudio 본사이트 로그인과 동일한 스타일) ───────────────── */
+.blind {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.login_page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #ececf0;
+}
+
+.login_frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  width: 100%;
+  max-width: 500px;
+  padding: 50px 20px;
+  background-color: #ffffff;
+}
+
+.login_header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  margin-bottom: 50px;
+}
+
+.login_header .logo {
+  margin: 0;
+  line-height: 45px;
+  font-size: 30px;
+  font-weight: 700;
+  color: #212121;
+}
+
+.login_header .sub_title {
+  font-size: 12px;
+  font-weight: 400;
+  color: #999999;
+  text-align: center;
+}
+
+.login_input_wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  width: 100%;
+}
+
+.login_form_item {
+  width: 100%;
+}
+
+.login_form_item input {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 14px;
+  border: 1px solid #dddddd;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #333333;
+  outline: none;
+}
+
+.login_form_item input:focus {
+  border-color: #212121;
+}
+
+.login_error {
+  width: 100%;
+  margin: 0;
+  min-height: 16px;
+  font-size: 12.5px;
+  color: #ef4444;
+}
+
+.login_btn {
+  width: 100%;
+  padding: 13px 0;
+  margin: 25px 0 0;
+  border: none;
+  border-radius: 4px;
+  background-color: #212121;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 18px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.login_btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.copyright {
+  margin: 20px 0 0;
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 18px;
+  text-align: center;
+  color: #555555;
+}
+
+@media screen and (max-width: 480px) {
+  .login_page {
+    padding: 0 20px;
+  }
+  .login_frame {
+    width: 100%;
+  }
+}
+
+/* ── 대시보드 ────────────────────────────────────────────────────────────── */
+.dashboard_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  padding: 0 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e5e8;
+}
+
+.dashboard_logo {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.dashboard_header_right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.admin_email {
+  font-size: 12.5px;
+  color: #8a8a98;
+}
+
+.btn_logout {
+  padding: 7px 14px;
+  border: 1px solid #e5e5e8;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dashboard_main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 24px 80px;
+}
+
+.dashboard_toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.dashboard_section_title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.dashboard_toolbar_right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user_count {
+  font-size: 12.5px;
+  color: #8a8a98;
+}
+
+.user_search {
+  width: 220px;
+  padding: 8px 12px;
+  border: 1px solid #e5e5e8;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+}
+
+.user_search:focus {
+  border-color: #2563eb;
+}
+
+.btn_refresh {
+  padding: 8px 14px;
+  border: 1px solid #e5e5e8;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn_refresh:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.dashboard_status {
+  min-height: 18px;
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  color: #8a8a98;
+}
+
+.dashboard_status.is_error {
+  color: #ef4444;
+}
+
+.user_table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  border: 1px solid #e5e5e8;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.user_table th,
+.user_table td {
+  padding: 12px 16px;
+  font-size: 13px;
+  text-align: left;
+  border-bottom: 1px solid #e5e5e8;
+  white-space: nowrap;
+}
+
+.user_table th {
+  font-weight: 600;
+  color: #5a5a68;
+  background: #fafafb;
+}
+
+.user_table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.empty_cell {
+  text-align: center;
+  color: #8a8a98;
+  white-space: normal;
+}
+
+.plan_badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #2563eb;
+  background: #eff4ff;
+}
+
+.action_cell {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.btn_adjust_credit,
+.btn_delete_user {
+  padding: 6px 12px;
+  border: 1px solid #e5e5e8;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn_delete_user {
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
+.dashboard_toolbar_secondary {
+  margin-top: 36px;
+}
+
+/* ── 크레딧 조정 모달 ────────────────────────────────────────────────────── */
+.modal_overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 15, 20, 0.4);
+  z-index: 1000;
+}
+
+.modal_overlay.show {
+  display: flex;
+}
+
+.modal_card {
+  width: 100%;
+  max-width: 360px;
+  padding: 24px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 15, 20, 0.18);
+}
+
+.modal_title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.modal_target {
+  margin: 0 0 20px;
+  font-size: 12.5px;
+  color: #8a8a98;
+}
+
+.form_field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form_field label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #5a5a68;
+}
+
+.form_field input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #e5e5e8;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #0e0e12;
+  outline: none;
+}
+
+.form_field input:focus {
+  border-color: #2563eb;
+}
+
+.modal_card .form_field {
+  margin-bottom: 14px;
+}
+
+.modal_actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn_modal_cancel {
+  padding: 9px 16px;
+  border: 1px solid #e5e5e8;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn_modal_submit {
+  padding: 9px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #0e0e12;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn_modal_submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

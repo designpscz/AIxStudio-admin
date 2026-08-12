@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AIxStudio Admin · 회원 관리</title>
+    <link rel="stylesheet" href="./css/admin.css">
+    <script type="module" src="./js/dashboard.js"></script>
+  </head>
+  <body class="dashboard_page">
+    <header class="dashboard_header">
+      <h1 class="dashboard_logo">AIxStudio Admin</h1>
+      <div class="dashboard_header_right">
+        <span class="admin_email" id="adminEmail"></span>
+        <button type="button" id="logoutBtn" class="btn_logout">로그아웃</button>
+      </div>
+    </header>
+
+    <main class="dashboard_main">
+      <section class="dashboard_toolbar">
+        <h2 class="dashboard_section_title">회원 관리</h2>
+        <div class="dashboard_toolbar_right">
+          <span class="user_count" id="userCount">총 0명</span>
+          <input type="search" id="userSearch" class="user_search" placeholder="이름 또는 이메일 검색">
+          <button type="button" id="refreshBtn" class="btn_refresh">새로고침</button>
+        </div>
+      </section>
+
+      <p class="dashboard_status" id="dashboardStatus"></p>
+
+      <table class="user_table">
+        <thead>
+          <tr>
+            <th>이름</th>
+            <th>이메일</th>
+            <th>플랜</th>
+            <th>크레딧 (사용/총)</th>
+            <th>회사명</th>
+            <th>가입일</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody id="userTableBody"></tbody>
+      </table>
+
+      <section class="dashboard_toolbar dashboard_toolbar_secondary">
+        <h2 class="dashboard_section_title">탈퇴 회원 (재가입 제한)</h2>
+        <span class="user_count" id="deletedCount">총 0명</span>
+      </section>
+
+      <p class="dashboard_status" id="deletedStatus"></p>
+
+      <table class="user_table">
+        <thead>
+          <tr>
+            <th>이메일</th>
+            <th>탈퇴일</th>
+            <th>재가입 가능일</th>
+            <th>상태</th>
+          </tr>
+        </thead>
+        <tbody id="deletedTableBody"></tbody>
+      </table>
+    </main>
+
+    <div class="modal_overlay" id="creditModalOverlay">
+      <div class="modal_card">
+        <h3 class="modal_title">크레딧 조정</h3>
+        <p class="modal_target" id="creditModalTarget"></p>
+
+        <div class="form_field">
+          <label for="creditDeltaInput">사용 크레딧 조정 금액 (사용량 증가는 양수, 환불/차감은 음수)</label>
+          <input type="number" id="creditDeltaInput" placeholder="예: 500 또는 -500">
+        </div>
+
+        <div class="form_field">
+          <label for="creditReasonInput">메모 (사유)</label>
+          <input type="text" id="creditReasonInput" placeholder="예: CS 문의 보상 지급">
+        </div>
+
+        <p class="login_error" id="creditModalError"></p>
+
+        <div class="modal_actions">
+          <button type="button" id="creditModalCancelBtn" class="btn_modal_cancel">취소</button>
+          <button type="button" id="creditModalSubmitBtn" class="btn_modal_submit">조정하기</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
