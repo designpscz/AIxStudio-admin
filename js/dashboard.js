@@ -5,6 +5,7 @@ const tableBody = document.getElementById("userTableBody");
 const searchInput = document.getElementById("userSearch");
 const statusEl = document.getElementById("dashboardStatus");
 const userCountEl = document.getElementById("userCount");
+const pendingCountEl = document.getElementById("pendingCount");
 const refreshBtn = document.getElementById("refreshBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const adminEmailEl = document.getElementById("adminEmail");
@@ -25,9 +26,21 @@ const adminListUsersFn = httpsCallable(functions, "adminListUsers");
 const adminAdjustCreditFn = httpsCallable(functions, "adminAdjustCredit");
 const adminListDeletedAccountsFn = httpsCallable(functions, "adminListDeletedAccounts");
 const adminDeleteUserFn = httpsCallable(functions, "adminDeleteUser");
+const adminApproveUserFn = httpsCallable(functions, "adminApproveUser");
 
 let allUsers = [];
 let creditModalTargetUser = null;
+
+// 이름·이메일·회사명은 가입자가 입력한 값이라 그대로 innerHTML에 넣으면 스크립트가 관리자 권한으로
+// 실행될 수 있다(B2B 초대 링크로 외부인이 가입할 수 있으므로 특히 중요). 화면에 넣는 값은 전부 이스케이프한다.
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 function formatCredit(value) {
   return Math.max(0, Number(value) || 0).toLocaleString("ko-KR");
@@ -40,41 +53,138 @@ function formatDate(value) {
   return date.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
+function isPending(user) {
+  return user.approved === false;
+}
+
+// 회사명이 없는 회원(구글 가입 등 B2C)은 개인으로 표시한다.
+function companyLabel(user) {
+  return String(user.company || "").trim() || "개인";
+}
+
+// 가입 방법. 서버가 users의 signup_provider를 그대로 내려준다.
+// 값이 없는 기존 회원은 구글 로그인이 생기기 전에 가입했으므로 이메일 가입으로 본다(login.js와 같은 기준).
+const PROVIDER_LABELS = {
+  "google.com": "구글",
+  password: "이메일",
+  kakao: "카카오",
+  naver: "네이버",
+};
+
+function providerLabel(user) {
+  const provider = String(user.signup_provider || "").trim() || "password";
+  return PROVIDER_LABELS[provider] || provider;
+}
+
+// Firebase 콘솔처럼 아이콘으로 보여준다. 규칙에 없는 경로(카카오 등)는 글자 배지로 남긴다.
+const PROVIDER_ICONS = {
+  "google.com": `<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+    <path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/>
+    <path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"/>
+    <path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l7.35-5.7z"/>
+    <path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"/>
+  </svg>`,
+  password: `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path fill="#5f6368" d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4.2-8 4.8-8-4.8V6l8 4.8L20 6v2.2z"/>
+  </svg>`,
+};
+
+function renderProviderCell(user) {
+  const provider = String(user.signup_provider || "").trim() || "password";
+  const label = escapeHtml(providerLabel(user));
+  const icon = PROVIDER_ICONS[provider];
+
+  if (!icon) {
+    return `<span class="provider_badge">${label}</span>`;
+  }
+
+  return `<span class="provider_icon" role="img" aria-label="${label}" title="${label}">${icon}</span>`;
+}
+
+function renderStatusCell(user) {
+  if (isPending(user)) {
+    return `<span class="status_badge status_badge_pending">승인 대기</span>`;
+  }
+  return `<span class="status_badge status_badge_approved">승인됨</span>`;
+}
+
+function renderCreditCell(user) {
+  const base = `${formatCredit(user.use_credit)} / ${formatCredit(user.max_credit)}`;
+  if (isPending(user)) {
+    return `${base}<br><span class="pending_credit">승인 시 ${formatCredit(user.pending_credit)} 지급</span>`;
+  }
+  return base;
+}
+
+function renderActionCell(user) {
+  const uid = escapeHtml(user.uid);
+
+  if (isPending(user)) {
+    return `
+      <button type="button" class="btn_approve_user" data-uid="${uid}">승인</button>
+      <button type="button" class="btn_delete_user" data-uid="${uid}" data-reject="1">거절</button>
+    `;
+  }
+
+  return `
+    <button type="button" class="btn_adjust_credit" data-uid="${uid}">크레딧 조정</button>
+    <button type="button" class="btn_delete_user" data-uid="${uid}">삭제</button>
+  `;
+}
+
 function renderRows(users) {
   if (!users.length) {
-    tableBody.innerHTML = `<tr><td colspan="7" class="empty_cell">조건에 맞는 회원이 없습니다.</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="9" class="empty_cell">조건에 맞는 회원이 없습니다.</td></tr>`;
     return;
   }
 
   tableBody.innerHTML = users
     .map((u) => `
-      <tr>
-        <td>${u.name || "-"}</td>
-        <td>${u.email || "-"}</td>
-        <td><span class="plan_badge">${u.plan || "free"}</span></td>
-        <td>${formatCredit(u.use_credit)} / ${formatCredit(u.max_credit)}</td>
-        <td>${u.company || "-"}</td>
-        <td>${formatDate(u.createdAt)}</td>
-        <td class="action_cell">
-          <button type="button" class="btn_adjust_credit" data-uid="${u.uid}">크레딧 조정</button>
-          <button type="button" class="btn_delete_user" data-uid="${u.uid}">삭제</button>
-        </td>
+      <tr class="${isPending(u) ? "row_pending" : ""}">
+        <td class="center_col">${renderStatusCell(u)}</td>
+        <td>${escapeHtml(u.name || "-")}</td>
+        <td>${escapeHtml(u.email || "-")}</td>
+        <td class="center_col">${renderProviderCell(u)}</td>
+        <td class="center_col"><span class="plan_badge">${escapeHtml(u.plan || "free")}</span></td>
+        <td>${renderCreditCell(u)}</td>
+        <td>${escapeHtml(companyLabel(u))}</td>
+        <td class="center_col">${formatDate(u.createdAt)}</td>
+        <td class="action_cell">${renderActionCell(u)}</td>
       </tr>
     `)
     .join("");
 }
 
+function updateCounts() {
+  userCountEl.textContent = `총 ${allUsers.length.toLocaleString("ko-KR")}명`;
+
+  const pending = allUsers.filter(isPending).length;
+  if (pendingCountEl) {
+    pendingCountEl.textContent = pending ? `승인 대기 ${pending.toLocaleString("ko-KR")}명` : "";
+    pendingCountEl.hidden = !pending;
+  }
+}
+
 function applyFilter() {
   const keyword = searchInput.value.trim().toLowerCase();
 
+  // 승인 대기 회원을 맨 위로 올리고, 각 묶음은 가입일 최신순으로 정렬한다.
+  const byNewest = (a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0);
+  const ordered = [
+    ...allUsers.filter(isPending).sort(byNewest),
+    ...allUsers.filter((u) => !isPending(u)).sort(byNewest),
+  ];
+
   if (!keyword) {
-    renderRows(allUsers);
+    renderRows(ordered);
     return;
   }
 
-  const filtered = allUsers.filter((u) =>
+  const filtered = ordered.filter((u) =>
     String(u.email || "").toLowerCase().includes(keyword) ||
-    String(u.name || "").toLowerCase().includes(keyword)
+    String(u.name || "").toLowerCase().includes(keyword) ||
+    companyLabel(u).toLowerCase().includes(keyword) ||
+    providerLabel(u).toLowerCase().includes(keyword)
   );
 
   renderRows(filtered);
@@ -89,7 +199,7 @@ async function loadUsers() {
   try {
     const result = await adminListUsersFn();
     allUsers = result.data?.users || [];
-    userCountEl.textContent = `총 ${allUsers.length.toLocaleString("ko-KR")}명`;
+    updateCounts();
     applyFilter();
     statusEl.textContent = "";
   } catch (error) {
@@ -119,10 +229,10 @@ function renderDeletedRows(accounts) {
   deletedTableBody.innerHTML = accounts
     .map((d) => `
       <tr>
-        <td>${d.email}</td>
+        <td>${escapeHtml(d.email)}</td>
         <td>${formatDate(d.deletedAt)}</td>
         <td>${formatDate(d.eligibleAt)}</td>
-        <td>${d.allowed ? "해제됨" : `제한중 (${d.remainingDays}일 남음)`}</td>
+        <td>${d.allowed ? "해제됨" : `제한중 (${Number(d.remainingDays) || 0}일 남음)`}</td>
       </tr>
     `)
     .join("");
@@ -206,19 +316,47 @@ async function submitCreditAdjustment() {
   }
 }
 
-async function deleteUser(uid) {
+async function approveUser(uid, button) {
   const user = allUsers.find((u) => u.uid === uid);
   if (!user) return;
 
   const confirmed = window.confirm(
-    `${user.name || "-"} (${user.email}) 회원을 삭제하시겠습니까?\n계정이 영구 삭제되며, 30일간 같은 이메일로 재가입이 제한됩니다.`
+    `${user.name || "-"} (${user.email}) 회원의 가입을 승인하시겠습니까?\n\n` +
+    `회사: ${companyLabel(user)}\n지급 크레딧: ${formatCredit(user.pending_credit)}`
+  );
+  if (!confirmed) return;
+
+  if (button) button.disabled = true;
+
+  try {
+    const result = await adminApproveUserFn({ uid });
+    user.approved = true;
+    user.max_credit = Number(result.data?.max_credit) || user.pending_credit;
+    user.pending_credit = 0;
+    updateCounts();
+    applyFilter();
+  } catch (error) {
+    console.error("[AdminDashboard] 가입 승인 오류:", error);
+    alert(error?.message || "가입 승인 중 오류가 발생했습니다.");
+    if (button) button.disabled = false;
+  }
+}
+
+async function deleteUser(uid, isReject) {
+  const user = allUsers.find((u) => u.uid === uid);
+  if (!user) return;
+
+  const action = isReject ? "가입을 거절" : "삭제";
+  const confirmed = window.confirm(
+    `${user.name || "-"} (${user.email}) 회원을 ${action}하시겠습니까?\n` +
+    `계정이 영구 삭제되며, 30일간 같은 이메일로 재가입이 제한됩니다.`
   );
   if (!confirmed) return;
 
   try {
     await adminDeleteUserFn({ uid });
     allUsers = allUsers.filter((u) => u.uid !== uid);
-    userCountEl.textContent = `총 ${allUsers.length.toLocaleString("ko-KR")}명`;
+    updateCounts();
     applyFilter();
     loadDeletedAccounts();
   } catch (error) {
@@ -228,6 +366,12 @@ async function deleteUser(uid) {
 }
 
 tableBody.addEventListener("click", (event) => {
+  const approveBtn = event.target.closest(".btn_approve_user");
+  if (approveBtn) {
+    approveUser(approveBtn.dataset.uid, approveBtn);
+    return;
+  }
+
   const adjustBtn = event.target.closest(".btn_adjust_credit");
   if (adjustBtn) {
     openCreditModal(adjustBtn.dataset.uid);
@@ -236,7 +380,7 @@ tableBody.addEventListener("click", (event) => {
 
   const deleteBtn = event.target.closest(".btn_delete_user");
   if (deleteBtn) {
-    deleteUser(deleteBtn.dataset.uid);
+    deleteUser(deleteBtn.dataset.uid, deleteBtn.dataset.reject === "1");
   }
 });
 

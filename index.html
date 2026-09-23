@@ -20,8 +20,9 @@
       <section class="dashboard_toolbar">
         <h2 class="dashboard_section_title">회원 관리</h2>
         <div class="dashboard_toolbar_right">
+          <span class="pending_count" id="pendingCount" hidden></span>
           <span class="user_count" id="userCount">총 0명</span>
-          <input type="search" id="userSearch" class="user_search" placeholder="이름 또는 이메일 검색">
+          <input type="search" id="userSearch" class="user_search" placeholder="이름·이메일·회사명 검색">
           <button type="button" id="refreshBtn" class="btn_refresh">새로고침</button>
         </div>
       </section>
@@ -31,12 +32,14 @@
       <table class="user_table">
         <thead>
           <tr>
+            <th class="center_col">상태</th>
             <th>이름</th>
             <th>이메일</th>
-            <th>플랜</th>
+            <th class="center_col">가입 방법</th>
+            <th class="center_col">플랜</th>
             <th>크레딧 (사용/총)</th>
             <th>회사명</th>
-            <th>가입일</th>
+            <th class="center_col">가입일</th>
             <th>관리</th>
           </tr>
         </thead>

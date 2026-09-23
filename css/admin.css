@@ -287,12 +287,44 @@ body {
   background: #eff4ff;
 }
 
+/* 상태·가입 방법·플랜은 배지나 아이콘이라 글자가 안쪽 여백만큼 밀려 보인다.
+   가입일처럼 값이 짧은 칸과 함께 헤더·값을 가운데로 맞춘다. */
+.user_table .center_col {
+  text-align: center;
+}
+
+/* 가입 방법은 Firebase 콘솔처럼 아이콘으로 보여준다(글자 배지는 카카오 등 예외용) */
+.provider_icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.provider_icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.provider_badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #4b5563;
+  background: #f1f2f5;
+}
+
 .action_cell {
   display: flex;
   gap: 6px;
   white-space: nowrap;
 }
 
+.btn_approve_user,
 .btn_adjust_credit,
 .btn_delete_user {
   padding: 6px 12px;
@@ -302,6 +334,55 @@ body {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.btn_approve_user {
+  color: #ffffff;
+  border-color: #2563eb;
+  background: #2563eb;
+}
+
+.btn_approve_user:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── B2B 가입 승인 ────────────────────────────────────────────────────────── */
+.status_badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status_badge_pending {
+  color: #b45309;
+  background: #fef3c7;
+}
+
+.status_badge_approved {
+  color: #047857;
+  background: #ecfdf5;
+}
+
+.row_pending td {
+  background: #fffbeb;
+}
+
+.pending_credit {
+  font-size: 11px;
+  color: #b45309;
+}
+
+.pending_count {
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b45309;
+  background: #fef3c7;
 }
 
 .btn_delete_user {
