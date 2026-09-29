@@ -293,7 +293,14 @@ body {
   text-align: center;
 }
 
-/* 가입 방법은 Firebase 콘솔처럼 아이콘으로 보여준다(글자 배지는 카카오 등 예외용) */
+/* 가입 방법은 Firebase 콘솔처럼 아이콘으로 보여준다(글자 배지는 카카오 등 예외용).
+   구글·이메일을 함께 쓰는 회원은 아이콘이 나란히 두 개 나온다. */
+.provider_icon + .provider_icon,
+.provider_icon + .provider_badge,
+.provider_badge + .provider_icon {
+  margin-left: 4px;
+}
+
 .provider_icon {
   display: inline-flex;
   align-items: center;

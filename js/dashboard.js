@@ -62,8 +62,9 @@ function companyLabel(user) {
   return String(user.company || "").trim() || "개인";
 }
 
-// 가입 방법. 서버가 users의 signup_provider를 그대로 내려준다.
-// 값이 없는 기존 회원은 구글 로그인이 생기기 전에 가입했으므로 이메일 가입으로 본다(login.js와 같은 기준).
+// 로그인 방법. 서버가 계정에 연결된 목록(providers)을 내려준다. 같은 이메일이면 구글과 이메일이
+// 한 계정으로 연동되므로 두 개가 같이 올 수 있다. 목록이 없으면 가입 경로(signup_provider)를 쓰고,
+// 그것도 없는 기존 회원은 구글 로그인이 생기기 전에 가입했으므로 이메일 가입으로 본다.
 const PROVIDER_LABELS = {
   "google.com": "구글",
   password: "이메일",
@@ -71,9 +72,19 @@ const PROVIDER_LABELS = {
   naver: "네이버",
 };
 
+// 이 계정으로 로그인할 수 있는 방법들
+function userProviders(user) {
+  const linked = Array.isArray(user.providers) ? user.providers.filter(Boolean) : [];
+  if (linked.length) return linked;
+
+  return [String(user.signup_provider || "").trim() || "password"];
+}
+
+// 검색창에서 '구글'·'이메일'로 찾을 수 있게 이름을 이어 붙인다
 function providerLabel(user) {
-  const provider = String(user.signup_provider || "").trim() || "password";
-  return PROVIDER_LABELS[provider] || provider;
+  return userProviders(user)
+    .map((provider) => PROVIDER_LABELS[provider] || provider)
+    .join(" ");
 }
 
 // Firebase 콘솔처럼 아이콘으로 보여준다. 규칙에 없는 경로(카카오 등)는 글자 배지로 남긴다.
@@ -90,15 +101,17 @@ const PROVIDER_ICONS = {
 };
 
 function renderProviderCell(user) {
-  const provider = String(user.signup_provider || "").trim() || "password";
-  const label = escapeHtml(providerLabel(user));
-  const icon = PROVIDER_ICONS[provider];
+  return userProviders(user)
+    .map((provider) => {
+      const label = escapeHtml(PROVIDER_LABELS[provider] || provider);
+      const icon = PROVIDER_ICONS[provider];
 
-  if (!icon) {
-    return `<span class="provider_badge">${label}</span>`;
-  }
+      // 아이콘이 없는 경로(카카오 등)는 글자 배지로 보여준다
+      if (!icon) return `<span class="provider_badge">${label}</span>`;
 
-  return `<span class="provider_icon" role="img" aria-label="${label}" title="${label}">${icon}</span>`;
+      return `<span class="provider_icon" role="img" aria-label="${label}" title="${label}">${icon}</span>`;
+    })
+    .join("");
 }
 
 function renderStatusCell(user) {
