@@ -1,5 +1,6 @@
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-functions.js";
 import { requireLogin, adminLogout, functions } from "./admin_auth.js";
+import { showAlert, showConfirm } from "./common/aix_dialog.js";
 
 const tableBody = document.getElementById("userTableBody");
 const searchInput = document.getElementById("userSearch");
@@ -257,7 +258,7 @@ async function loadUsers() {
     if (error?.code === "functions/permission-denied") {
       statusEl.textContent = "관리자 권한이 없습니다.";
       statusEl.classList.add("is_error");
-      alert("관리자 권한이 없습니다.");
+      await showAlert("관리자 권한이 없습니다.", { title: "접근할 수 없어요" });
       await adminLogout();
       return false;
     }
@@ -299,13 +300,13 @@ async function exportMarketingRecipients() {
     if (!(await loadUsers())) return;
 
     if (allUsers.length && !allUsers.some((u) => "marketing_opt_in" in u)) {
-      alert("서버가 아직 마케팅 동의 정보를 보내지 않습니다.\nadminListUsers 함수를 새 버전으로 배포해주세요.");
+      await showAlert("adminListUsers 함수를 새 버전으로 배포해주세요.", { title: "서버가 아직 마케팅 동의 정보를 보내지 않아요" });
       return;
     }
 
     const recipients = getMarketingRecipients();
     if (!recipients.length) {
-      alert("마케팅 정보 수신에 동의한 회원이 없습니다.");
+      await showAlert("마케팅 정보 수신에 동의한 회원이 없습니다.", { title: "내려받을 목록이 없어요" });
       return;
     }
 
@@ -370,10 +371,11 @@ async function allowRejoin(key, button) {
   const account = deletedAccounts.find((d) => deletedKey(d) === key);
   if (!account || account.allowed) return;
 
-  const confirmed = window.confirm(
-    `${account.email} 의 재가입 제한을 해제하시겠습니까?\n\n` +
+  const confirmed = await showConfirm(
+    `${account.email}\n\n` +
     `재가입 가능일: ${formatDate(account.eligibleAt)} (${Number(account.remainingDays) || 0}일 남음)\n` +
-    `해제하면 지금 바로 같은 이메일로 다시 가입할 수 있습니다.`
+    `해제하면 지금 바로 같은 이메일로 다시 가입할 수 있습니다.`,
+    { title: "재가입 제한을 해제할까요?", confirmText: "해제하기" }
   );
   if (!confirmed) return;
 
@@ -389,9 +391,9 @@ async function allowRejoin(key, button) {
 
     // 서버에 함수가 아직 없으면 원인을 바로 알 수 있게 따로 안내한다
     if (error?.code === "functions/not-found") {
-      alert("서버에 adminAllowRejoin 함수가 없습니다. 백엔드 배포 후 다시 시도해주세요.");
+      await showAlert("서버에 adminAllowRejoin 함수가 없습니다. 백엔드 배포 후 다시 시도해주세요.", { title: "해제하지 못했어요" });
     } else {
-      alert(error?.message || "재가입 제한 해제 중 오류가 발생했습니다.");
+      await showAlert(error?.message || "재가입 제한 해제 중 오류가 발생했습니다.", { title: "해제하지 못했어요" });
     }
 
     if (button) button.disabled = false;
@@ -480,9 +482,10 @@ async function approveUser(uid, button) {
   const user = allUsers.find((u) => u.uid === uid);
   if (!user) return;
 
-  const confirmed = window.confirm(
-    `${user.name || "-"} (${user.email}) 회원의 가입을 승인하시겠습니까?\n\n` +
-    `회사: ${companyLabel(user)}\n지급 크레딧: ${formatCredit(user.pending_credit)}`
+  const confirmed = await showConfirm(
+    `${user.name || "-"} (${user.email})\n\n` +
+    `회사: ${companyLabel(user)}\n지급 크레딧: ${formatCredit(user.pending_credit)}`,
+    { title: "가입을 승인할까요?", confirmText: "승인하기" }
   );
   if (!confirmed) return;
 
@@ -497,7 +500,7 @@ async function approveUser(uid, button) {
     applyFilter();
   } catch (error) {
     console.error("[AdminDashboard] 가입 승인 오류:", error);
-    alert(error?.message || "가입 승인 중 오류가 발생했습니다.");
+    await showAlert(error?.message || "가입 승인 중 오류가 발생했습니다.", { title: "승인하지 못했어요" });
     if (button) button.disabled = false;
   }
 }
@@ -506,10 +509,12 @@ async function deleteUser(uid, isReject) {
   const user = allUsers.find((u) => u.uid === uid);
   if (!user) return;
 
-  const action = isReject ? "가입을 거절" : "삭제";
-  const confirmed = window.confirm(
-    `${user.name || "-"} (${user.email}) 회원을 ${action}하시겠습니까?\n` +
-    `계정이 영구 삭제되며, 30일간 같은 이메일로 재가입이 제한됩니다.`
+  const confirmed = await showConfirm(
+    `${user.name || "-"} (${user.email})\n\n` +
+    `계정이 영구 삭제되며, 30일간 같은 이메일로 재가입이 제한됩니다.`,
+    isReject
+      ? { title: "가입을 거절할까요?", confirmText: "거절하기", danger: true }
+      : { title: "회원을 삭제할까요?", confirmText: "삭제하기", danger: true }
   );
   if (!confirmed) return;
 
@@ -521,7 +526,7 @@ async function deleteUser(uid, isReject) {
     loadDeletedAccounts();
   } catch (error) {
     console.error("[AdminDashboard] 회원 삭제 오류:", error);
-    alert(error?.message || "회원 삭제 중 오류가 발생했습니다.");
+    await showAlert(error?.message || "회원 삭제 중 오류가 발생했습니다.", { title: "처리하지 못했어요" });
   }
 }
 
