@@ -243,21 +243,34 @@ body {
   color: #ef4444;
 }
 
-.user_table {
-  width: 100%;
-  border-collapse: collapse;
+/* 표를 감싸는 박스가 테두리와 모서리를 맡는다. 어느 섹션이든 좌우 끝이 같은 자리에서
+   맞고, 표는 이 너비 안에서만 그려진다(가로 스크롤 없음). */
+.table_wrap {
   background: #ffffff;
   border: 1px solid #e5e5e8;
   border-radius: 12px;
   overflow: hidden;
 }
 
+.user_table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* 열이 많아 값마다 한 줄을 고집하면 표가 컨테이너를 넘친다. 긴 이메일·회사명은
+   셀 안에서 줄바꿈해 잘리지 않게 한다. */
 .user_table th,
 .user_table td {
-  padding: 12px 16px;
-  font-size: 13px;
+  padding: 11px 12px;
+  font-size: 12.5px;
   text-align: left;
   border-bottom: 1px solid #e5e5e8;
+  overflow-wrap: anywhere;
+}
+
+/* 배지·아이콘·날짜·크레딧처럼 중간에서 끊기면 읽기 어려운 값만 한 줄로 둔다. */
+.user_table .center_col,
+.user_table .credit_cell {
   white-space: nowrap;
 }
 
@@ -325,16 +338,19 @@ body {
   background: #f1f2f5;
 }
 
+/* 버튼 글자는 한 줄로 두되, 창이 좁아지면 버튼끼리 줄을 바꿔 표가 잘리지 않게 한다. */
 .action_cell {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   white-space: nowrap;
 }
 
 .btn_approve_user,
 .btn_adjust_credit,
-.btn_delete_user {
-  padding: 6px 12px;
+.btn_delete_user,
+.btn_allow_rejoin {
+  padding: 6px 10px;
   border: 1px solid #e5e5e8;
   border-radius: 8px;
   background: #ffffff;
@@ -395,6 +411,17 @@ body {
 .btn_delete_user {
   color: #ef4444;
   border-color: #fecaca;
+}
+
+/* 탈퇴 회원의 30일 재가입 제한을 미리 풀어주는 버튼 */
+.btn_allow_rejoin {
+  color: #2563eb;
+  border-color: #c7d7fe;
+}
+
+.btn_allow_rejoin:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .dashboard_toolbar_secondary {
@@ -498,4 +525,24 @@ body {
 .btn_modal_submit:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+/* 마케팅 정보 수신 동의 표시 */
+.marketing_badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #047857;
+  background: #ecfdf5;
+}
+
+.marketing_since {
+  font-size: 11px;
+  color: #8a8a98;
+}
+
+.marketing_off {
+  color: #c4c4cc;
 }
