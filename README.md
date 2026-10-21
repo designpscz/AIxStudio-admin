@@ -9,6 +9,7 @@ AIxStudio(aiproductpage) 서비스의 회원 관리를 위한 정적 관리자 �
 - **크레딧 조정** — `adminAdjustCredit` callable function 호출, 모달을 통해 증감액과 사유 입력
 - **회원 삭제** — `adminDeleteUser` callable function 호출, 삭제 시 30일간 동일 이메일 재가입 제한
 - **탈퇴 회원 관리** — `adminListDeletedAccounts` callable function으로 탈퇴 회원 및 재가입 가능일 조회
+- **재가입 제한 해제** — `adminAllowRejoin` callable function 호출, 30일을 기다리지 않고 같은 이메일로 재가입할 수 있도록 제한 해제
 
 ## 기술 스택
 
@@ -36,7 +37,9 @@ js/dashboard.js          회원 목록/탈퇴 회원 렌더링, 크레딧 조정
 2. 로그인 성공 시 `index.html`로 리다이렉트
 3. 실제 관리자 권한 검증은 클라이언트가 아닌 Firebase Cloud Functions(callable) 쪽에서 수행되며, 권한이 없으면 `functions/permission-denied` 오류로 응답 → 클라이언트는 알림 후 자동 로그아웃
 
-> 이 저장소에는 Cloud Functions 소스가 포함되어 있지 않습니다. `adminListUsers`, `adminAdjustCredit`, `adminDeleteUser`, `adminListDeletedAccounts` 함수는 별도 백엔드 저장소/프로젝트에서 관리되는 것으로 보입니다.
+> 이 저장소에는 Cloud Functions 소스가 포함되어 있지 않습니다. `adminListUsers`, `adminAdjustCredit`, `adminDeleteUser`, `adminApproveUser`, `adminListDeletedAccounts`, `adminAllowRejoin` 함수는 별도 백엔드 저장소/프로젝트에서 관리되는 것으로 보입니다.
+>
+> `adminAllowRejoin`은 관리자 페이지에서 먼저 호출하도록 추가한 함수입니다. 탈퇴 기록의 문서 id와 이메일(`{ id, email }`, id가 없으면 `{ email }`)을 받아 해당 이메일의 재가입 제한을 즉시 해제해야 하며, 아직 배포 전이면 화면에서 "서버에 adminAllowRejoin 함수가 없습니다" 안내가 뜹니다.
 
 ## 실행 방법
 

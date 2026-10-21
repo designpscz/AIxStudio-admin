@@ -7,6 +7,8 @@ const statusEl = document.getElementById("dashboardStatus");
 const userCountEl = document.getElementById("userCount");
 const pendingCountEl = document.getElementById("pendingCount");
 const refreshBtn = document.getElementById("refreshBtn");
+const marketingCountEl = document.getElementById("marketingCount");
+const marketingExportBtn = document.getElementById("marketingExportBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const adminEmailEl = document.getElementById("adminEmail");
 
@@ -27,8 +29,10 @@ const adminAdjustCreditFn = httpsCallable(functions, "adminAdjustCredit");
 const adminListDeletedAccountsFn = httpsCallable(functions, "adminListDeletedAccounts");
 const adminDeleteUserFn = httpsCallable(functions, "adminDeleteUser");
 const adminApproveUserFn = httpsCallable(functions, "adminApproveUser");
+const adminAllowRejoinFn = httpsCallable(functions, "adminAllowRejoin");
 
 let allUsers = [];
+let deletedAccounts = [];
 let creditModalTargetUser = null;
 
 // 이름·이메일·회사명은 가입자가 입력한 값이라 그대로 innerHTML에 넣으면 스크립트가 관리자 권한으로
@@ -46,11 +50,31 @@ function formatCredit(value) {
   return Math.max(0, Number(value) || 0).toLocaleString("ko-KR");
 }
 
-function formatDate(value) {
-  if (!value) return "-";
+// 서버가 내려주는 날짜는 ms 숫자, 초 숫자, ISO 문자열, Firestore Timestamp({seconds}/{_seconds})처럼
+// 형태가 제각각이다. 화면과 CSV가 같은 값을 쓰도록 한 곳에서 Date로 맞춘다.
+function toDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+
+  // Firestore Timestamp가 JSON으로 오면 초 단위 필드만 남는다
+  if (typeof value === "object") {
+    const seconds = Number(value.seconds ?? value._seconds);
+    return Number.isFinite(seconds) ? new Date(seconds * 1000) : null;
+  }
+
+  // 숫자(숫자만 담긴 문자열 포함). 13자리는 ms, 10자리는 초로 본다.
+  if (typeof value === "number" || /^\d+$/.test(String(value))) {
+    const num = Number(value);
+    return Number.isFinite(num) ? new Date(num < 1e12 ? num * 1000 : num) : null;
+  }
+
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" });
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDate(value) {
+  const date = toDate(value);
+  return date ? date.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }) : "-";
 }
 
 function isPending(user) {
@@ -129,6 +153,13 @@ function renderCreditCell(user) {
   return base;
 }
 
+// 마케팅 정보 수신 동의 여부. 동의한 회원은 동의일을 함께 보여준다.
+function renderMarketingCell(user) {
+  if (!user.marketing_opt_in) return `<span class="marketing_off">-</span>`;
+  const since = user.marketing_consent_at ? formatDate(user.marketing_consent_at) : "";
+  return `<span class="marketing_badge">동의</span>${since ? `<br><span class="marketing_since">${since}</span>` : ""}`;
+}
+
 function renderActionCell(user) {
   const uid = escapeHtml(user.uid);
 
@@ -147,7 +178,7 @@ function renderActionCell(user) {
 
 function renderRows(users) {
   if (!users.length) {
-    tableBody.innerHTML = `<tr><td colspan="9" class="empty_cell">조건에 맞는 회원이 없습니다.</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="10" class="empty_cell">조건에 맞는 회원이 없습니다.</td></tr>`;
     return;
   }
 
@@ -159,8 +190,9 @@ function renderRows(users) {
         <td>${escapeHtml(u.email || "-")}</td>
         <td class="center_col">${renderProviderCell(u)}</td>
         <td class="center_col"><span class="plan_badge">${escapeHtml(u.plan || "free")}</span></td>
-        <td>${renderCreditCell(u)}</td>
+        <td class="credit_cell">${renderCreditCell(u)}</td>
         <td>${escapeHtml(companyLabel(u))}</td>
+        <td class="center_col">${renderMarketingCell(u)}</td>
         <td class="center_col">${formatDate(u.createdAt)}</td>
         <td class="action_cell">${renderActionCell(u)}</td>
       </tr>
@@ -170,6 +202,9 @@ function renderRows(users) {
 
 function updateCounts() {
   userCountEl.textContent = `총 ${allUsers.length.toLocaleString("ko-KR")}명`;
+  if (marketingCountEl) {
+    marketingCountEl.textContent = `마케팅 동의 ${getMarketingRecipients().length.toLocaleString("ko-KR")}명`;
+  }
 
   const pending = allUsers.filter(isPending).length;
   if (pendingCountEl) {
@@ -215,6 +250,7 @@ async function loadUsers() {
     updateCounts();
     applyFilter();
     statusEl.textContent = "";
+    return true;
   } catch (error) {
     console.error("[AdminDashboard] 회원 목록 조회 오류:", error);
 
@@ -223,19 +259,96 @@ async function loadUsers() {
       statusEl.classList.add("is_error");
       alert("관리자 권한이 없습니다.");
       await adminLogout();
-      return;
+      return false;
     }
 
     statusEl.textContent = "회원 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.";
     statusEl.classList.add("is_error");
+    return false;
   } finally {
     refreshBtn.disabled = false;
   }
 }
 
+// 마케팅 메일 수신 대상: 동의했고, 이메일이 있고, 가입 승인된 회원
+function getMarketingRecipients() {
+  return allUsers.filter((u) => u.marketing_opt_in && u.email && !isPending(u));
+}
+
+// 스티비 날짜 형식(yyyy-MM-dd)
+function formatYmd(value) {
+  const date = toDate(value);
+  if (!date) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+// CSV 한 칸. 쉼표·따옴표·줄바꿈이 있으면 따옴표로 감싸고, 엑셀이 수식으로 읽는 첫 글자(= + - @)는 막는다.
+function csvCell(value) {
+  let text = String(value ?? "");
+  if (/^[=+\-@]/.test(text)) text = `'${text}`;
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+// 스티비 주소록 [파일로 추가하기]에 바로 올리는 CSV(UTF-8).
+// 이메일 → 이메일 주소, 이름 → 이름, 광고성정보수신동의(Y) → 광고성 정보 수신 동의 필드에 연결한다.
+// 마이페이지에서 해제한 회원이 빠지도록 내려받기 직전에 목록을 새로 불러온다.
+async function exportMarketingRecipients() {
+  marketingExportBtn.disabled = true;
+  try {
+    // 최신 목록을 못 받으면 예전 목록(해제한 회원 포함 가능)으로 내보내지 않는다
+    if (!(await loadUsers())) return;
+
+    if (allUsers.length && !allUsers.some((u) => "marketing_opt_in" in u)) {
+      alert("서버가 아직 마케팅 동의 정보를 보내지 않습니다.\nadminListUsers 함수를 새 버전으로 배포해주세요.");
+      return;
+    }
+
+    const recipients = getMarketingRecipients();
+    if (!recipients.length) {
+      alert("마케팅 정보 수신에 동의한 회원이 없습니다.");
+      return;
+    }
+
+    // 동의일은 스티비 필수 항목이 아니라 비어도 업로드는 되지만, 비는 이유를 바로 알 수 있게 알려준다
+    const missingConsentAt = recipients.filter((u) => !u.marketing_consent_at).length;
+    if (missingConsentAt) {
+      console.warn(`[AdminDashboard] ${missingConsentAt}명은 동의일이 없어 CSV 동의일 칸이 빕니다. adminBackfillMarketingConsentAt으로 채울 수 있습니다.`);
+      statusEl.textContent = `${missingConsentAt}명은 동의일 기록이 없어 CSV의 동의일 칸이 비어 있습니다. (이메일·이름·동의 여부는 정상)`;
+    }
+
+    const rows = [
+      ["이메일", "이름", "광고성정보수신동의", "동의일"],
+      ...recipients.map((u) => [u.email, u.name || "", "Y", formatYmd(u.marketing_consent_at)]),
+    ];
+    const csv = rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
+    // 엑셀에서 열어도 한글이 깨지지 않도록 BOM을 붙인다(스티비는 UTF-8 권장)
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `marketing_optin_${formatYmd(Date.now()).replace(/-/g, "")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  } finally {
+    marketingExportBtn.disabled = false;
+  }
+}
+
+// 탈퇴 기록을 가리키는 값. 서버가 문서 id를 주면 그걸 쓰고, 없으면 이메일로 찾는다.
+function deletedKey(account) {
+  return String(account.id || account.email || "");
+}
+
+// 제한이 남은 회원만 해제 버튼을 보여준다(이미 풀린 기록은 더 할 일이 없다).
+function renderDeletedActionCell(account) {
+  if (account.allowed) return "-";
+  return `<button type="button" class="btn_allow_rejoin" data-key="${escapeHtml(deletedKey(account))}">제한 해제</button>`;
+}
+
 function renderDeletedRows(accounts) {
   if (!accounts.length) {
-    deletedTableBody.innerHTML = `<tr><td colspan="4" class="empty_cell">탈퇴한 회원이 없습니다.</td></tr>`;
+    deletedTableBody.innerHTML = `<tr><td colspan="5" class="empty_cell">탈퇴한 회원이 없습니다.</td></tr>`;
     return;
   }
 
@@ -246,9 +359,43 @@ function renderDeletedRows(accounts) {
         <td>${formatDate(d.deletedAt)}</td>
         <td>${formatDate(d.eligibleAt)}</td>
         <td>${d.allowed ? "해제됨" : `제한중 (${Number(d.remainingDays) || 0}일 남음)`}</td>
+        <td class="action_cell">${renderDeletedActionCell(d)}</td>
       </tr>
     `)
     .join("");
+}
+
+// 30일을 기다리지 않고 같은 이메일로 다시 가입할 수 있게 풀어준다.
+async function allowRejoin(key, button) {
+  const account = deletedAccounts.find((d) => deletedKey(d) === key);
+  if (!account || account.allowed) return;
+
+  const confirmed = window.confirm(
+    `${account.email} 의 재가입 제한을 해제하시겠습니까?\n\n` +
+    `재가입 가능일: ${formatDate(account.eligibleAt)} (${Number(account.remainingDays) || 0}일 남음)\n` +
+    `해제하면 지금 바로 같은 이메일로 다시 가입할 수 있습니다.`
+  );
+  if (!confirmed) return;
+
+  if (button) button.disabled = true;
+
+  try {
+    await adminAllowRejoinFn(account.id ? { id: account.id, email: account.email } : { email: account.email });
+    account.allowed = true;
+    account.remainingDays = 0;
+    renderDeletedRows(deletedAccounts);
+  } catch (error) {
+    console.error("[AdminDashboard] 재가입 제한 해제 오류:", error);
+
+    // 서버에 함수가 아직 없으면 원인을 바로 알 수 있게 따로 안내한다
+    if (error?.code === "functions/not-found") {
+      alert("서버에 adminAllowRejoin 함수가 없습니다. 백엔드 배포 후 다시 시도해주세요.");
+    } else {
+      alert(error?.message || "재가입 제한 해제 중 오류가 발생했습니다.");
+    }
+
+    if (button) button.disabled = false;
+  }
 }
 
 async function loadDeletedAccounts() {
@@ -258,9 +405,9 @@ async function loadDeletedAccounts() {
 
   try {
     const result = await adminListDeletedAccountsFn();
-    const accounts = result.data?.accounts || [];
-    deletedCountEl.textContent = `총 ${accounts.length.toLocaleString("ko-KR")}명`;
-    renderDeletedRows(accounts);
+    deletedAccounts = result.data?.accounts || [];
+    deletedCountEl.textContent = `총 ${deletedAccounts.length.toLocaleString("ko-KR")}명`;
+    renderDeletedRows(deletedAccounts);
     deletedStatusEl.textContent = "";
   } catch (error) {
     console.error("[AdminDashboard] 탈퇴 회원 목록 조회 오류:", error);
@@ -397,6 +544,13 @@ tableBody.addEventListener("click", (event) => {
   }
 });
 
+deletedTableBody.addEventListener("click", (event) => {
+  const allowBtn = event.target.closest(".btn_allow_rejoin");
+  if (allowBtn) {
+    allowRejoin(allowBtn.dataset.key, allowBtn);
+  }
+});
+
 creditModalCancelBtn.addEventListener("click", closeCreditModal);
 creditModalSubmitBtn.addEventListener("click", submitCreditAdjustment);
 creditModalOverlay.addEventListener("click", (event) => {
@@ -404,6 +558,7 @@ creditModalOverlay.addEventListener("click", (event) => {
 });
 
 searchInput.addEventListener("input", applyFilter);
+marketingExportBtn?.addEventListener("click", exportMarketingRecipients);
 refreshBtn.addEventListener("click", () => {
   loadUsers();
   loadDeletedAccounts();
